@@ -1,8 +1,122 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { supabase } from "./lib/supabase";
+
+type Atividade = {
+  id: number;
+  titulo: string;
+  descricao: string;
+  categoria: string;
+  local: string;
+  data: string;
+};
+
+type AtividadeRow = Omit<Atividade, "descricao"> & { "descriçao": string };
+
+type Parceiro = {
+  id: number;
+  nome: string;
+  logo_url: string;
+  site_url: string;
+};
+
+type Testemunho = {
+  id: number;
+  autor: string;
+  cargo: string;
+  mensagem: string;
+};
+
+type Video = {
+  id: number;
+  titulo: string;
+  video_url: string;
+};
+
+const CORES = [
+  ["#E8A33D", "#B5502F"],
+  ["#0F3B36", "#1B1B16"],
+  ["#D6473F", "#B5502F"],
+  ["#E8A33D", "#0F3B36"],
+  ["#B5502F", "#1B1B16"],
+  ["#D6473F", "#E8A33D"],
+];
+
+function formatarData(data: string) {
+  return new Date(data + "T00:00:00").toLocaleDateString("pt-PT", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function embedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {
+      const id = u.hostname.includes("youtu.be")
+        ? u.pathname.slice(1)
+        : u.searchParams.get("v") ?? u.pathname.split("/embed/")[1] ?? "";
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://player.vimeo.com/video/${id}` : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export default function Home() {
+  const [atividades, setAtividades] = useState<Atividade[]>([]);
+  const [parceiros, setParceiros] = useState<Parceiro[]>([]);
+  const [testemunhos, setTestemunhos] = useState<Testemunho[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("atividades")
+      .select("*")
+      .order("data", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) return console.error("Erro ao carregar atividades:", error);
+        setAtividades(
+          (data as AtividadeRow[]).map((r) => ({ ...r, descricao: r["descriçao"] }))
+        );
+      });
+
+    supabase
+      .from("Parceiros")
+      .select("id, nome:Nome, logo_url:Logo_url, site_url:Site_url")
+      .order("id", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) return console.error("Erro ao carregar parceiros:", error);
+        setParceiros(data as Parceiro[]);
+      });
+
+    supabase
+      .from("Testemunhas")
+      .select("id, autor:Autor, cargo:Cargo, mensagem:Mensagem")
+      .order("id", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) return console.error("Erro ao carregar testemunhos:", error);
+        setTestemunhos(data as Testemunho[]);
+      });
+
+    supabase
+      .from("Videos")
+      .select("id, titulo:Titulo, video_url:Video_url")
+      .order("id", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) return console.error("Erro ao carregar vídeos:", error);
+        setVideos(data as Video[]);
+      });
+  }, []);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -47,7 +161,7 @@ export default function Home() {
             </p>
             <div className="cta-row">
               <a href="#doar" className="btn-primary">Quero doar</a>
-              <a href="#voluntariar" className="btn-ghost">Ser voluntário</a>
+              <Link href="/voluntarios" className="btn-ghost">Ser voluntário</Link>
             </div>
             <div className="trust-row">
               <div><strong>12.400+</strong>vidas impactadas</div>
@@ -90,48 +204,29 @@ export default function Home() {
           </div>
           <p>Um registo transparente de tudo o que fazemos, comunidade a comunidade.</p>
         </div>
-        <div className="timeline" data-reveal>
-          <div className="t-card">
-            <div className="t-thumb" style={{ "--c1": "#E8A33D", "--c2": "#B5502F" } as React.CSSProperties}>
-              <span className="tag">Educação</span>
-            </div>
-            <div className="t-body">
-              <div className="t-date">14 Jul 2026 · Huambo</div>
-              <h3>Entrega de material escolar</h3>
-              <p>500 kits entregues a crianças em situação de vulnerabilidade em 6 escolas rurais.</p>
-            </div>
+        {atividades.length === 0 ? (
+          <p style={{ color: "rgba(27,27,22,0.55)" }}>Ainda não há atividades publicadas.</p>
+        ) : (
+          <div className="timeline" data-reveal>
+            {atividades.map((a, i) => {
+              const [c1, c2] = CORES[i % CORES.length];
+              return (
+                <div className="t-card" key={a.id}>
+                  <div className="t-thumb" style={{ "--c1": c1, "--c2": c2 } as React.CSSProperties}>
+                    {a.categoria && <span className="tag">{a.categoria}</span>}
+                  </div>
+                  <div className="t-body">
+                    <div className="t-date">
+                      {a.data ? formatarData(a.data) : ""}{a.data && a.local ? " · " : ""}{a.local}
+                    </div>
+                    <h3>{a.titulo}</h3>
+                    <p>{a.descricao}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="t-card">
-            <div className="t-thumb" style={{ "--c1": "#0F3B36", "--c2": "#1B1B16" } as React.CSSProperties}>
-              <span className="tag">Acolhimento</span>
-            </div>
-            <div className="t-body">
-              <div className="t-date">02 Jul 2026 · Benguela</div>
-              <h3>Apoio a centro de acolhimento</h3>
-              <p>Reforço de estrutura e acompanhamento psicossocial para 40 crianças acolhidas.</p>
-            </div>
-          </div>
-          <div className="t-card">
-            <div className="t-thumb" style={{ "--c1": "#D6473F", "--c2": "#B5502F" } as React.CSSProperties}>
-              <span className="tag">Reintegração Familiar</span>
-            </div>
-            <div className="t-body">
-              <div className="t-date">21 Jun 2026 · Malanje</div>
-              <h3>Programa de reintegração familiar</h3>
-              <p>12 crianças reintegradas com acompanhamento contínuo das famílias.</p>
-            </div>
-          </div>
-          <div className="t-card">
-            <div className="t-thumb" style={{ "--c1": "#E8A33D", "--c2": "#0F3B36" } as React.CSSProperties}>
-              <span className="tag">Saúde</span>
-            </div>
-            <div className="t-body">
-              <div className="t-date">05 Jun 2026 · Luanda</div>
-              <h3>Rastreio de saúde infantil</h3>
-              <p>Consultas e acompanhamento médico para mais de 300 crianças e adolescentes.</p>
-            </div>
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="pad wrap" id="doar">
@@ -188,7 +283,9 @@ export default function Home() {
               <input type="checkbox" id="anon" />
               <label htmlFor="anon">Quero doar de forma anónima</label>
             </div>
-            <button className="btn-donate-full">Continuar para pagamento</button>
+            <Link href="/doacoes" className="btn-donate-full" style={{ display: "block", textAlign: "center" }}>
+              Continuar para pagamento
+            </Link>
           </div>
         </div>
       </section>
@@ -201,13 +298,32 @@ export default function Home() {
           </div>
           <p>Instituições e empresas que caminham connosco em cada campanha.</p>
         </div>
-        <div className="partners-row" data-reveal>
-          <div className="partner-chip">Kalunga Corp.</div>
-          <div className="partner-chip">Fundação Luz</div>
-          <div className="partner-chip">Banco Terra</div>
-          <div className="partner-chip">Rede Saúde+</div>
-          <div className="partner-chip">Grupo Sanzala</div>
-        </div>
+        {parceiros.length === 0 ? (
+          <p style={{ color: "rgba(27,27,22,0.55)" }}>Ainda não há parceiros publicados.</p>
+        ) : (
+          <div className="partners-row" data-reveal>
+            {parceiros.map((p) => {
+              const conteudo = p.logo_url ? (
+                <img src={p.logo_url} alt={p.nome} style={{ maxHeight: "40px" }} />
+              ) : (
+                p.nome
+              );
+              return p.site_url ? (
+                <a
+                  key={p.id}
+                  href={p.site_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="partner-chip"
+                >
+                  {conteudo}
+                </a>
+              ) : (
+                <div key={p.id} className="partner-chip">{conteudo}</div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="pad wrap" id="videos">
@@ -218,26 +334,41 @@ export default function Home() {
           </div>
           <p>Momentos reais das nossas ações, contados por quem os viveu.</p>
         </div>
-        <div className="video-grid" data-reveal>
-          <div className="video-card">
-            <div className="video-thumb" style={{ "--c1": "#0F3B36", "--c2": "#E8A33D" } as React.CSSProperties}>
-              <div className="play-btn"></div>
-            </div>
-            <div className="t-body"><h3>Um dia em Huambo</h3></div>
+        {videos.length === 0 ? (
+          <p style={{ color: "rgba(27,27,22,0.55)" }}>Ainda não há vídeos publicados.</p>
+        ) : (
+          <div className="video-grid" data-reveal>
+            {videos.map((v) => {
+              const src = embedUrl(v.video_url);
+              return (
+                <div className="video-card" key={v.id}>
+                  {src ? (
+                    <div style={{ aspectRatio: "16/10" }}>
+                      <iframe
+                        src={src}
+                        title={v.titulo}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={{ width: "100%", height: "100%", border: "none" }}
+                      />
+                    </div>
+                  ) : (
+                    <a
+                      href={v.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="video-thumb"
+                      style={{ "--c1": "#0F3B36", "--c2": "#E8A33D" } as React.CSSProperties}
+                    >
+                      <div className="play-btn"></div>
+                    </a>
+                  )}
+                  <div className="t-body"><h3>{v.titulo}</h3></div>
+                </div>
+              );
+            })}
           </div>
-          <div className="video-card">
-            <div className="video-thumb" style={{ "--c1": "#B5502F", "--c2": "#1B1B16" } as React.CSSProperties}>
-              <div className="play-btn"></div>
-            </div>
-            <div className="t-body"><h3>Vozes de quem apoiamos</h3></div>
-          </div>
-          <div className="video-card">
-            <div className="video-thumb" style={{ "--c1": "#D6473F", "--c2": "#E8A33D" } as React.CSSProperties}>
-              <div className="play-btn"></div>
-            </div>
-            <div className="t-body"><h3>Voluntariar: como começar</h3></div>
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="pad wrap">
@@ -247,29 +378,24 @@ export default function Home() {
             <h2>Quem sente o impacto</h2>
           </div>
         </div>
-        <div className="testi-grid" data-reveal>
-          <div className="testi">
-            <p>&quot;Graças ao acompanhamento da MOPICA, o meu filho voltou para casa em segurança e continua a estudar.&quot;</p>
-            <div className="who">
-              <div className="avatar" style={{ "--c1": "#E8A33D", "--c2": "#B5502F" } as React.CSSProperties}></div>
-              <div><strong>Ana M.</strong><span>Mãe acompanhada em Luanda</span></div>
-            </div>
+        {testemunhos.length === 0 ? (
+          <p style={{ color: "rgba(27,27,22,0.55)" }}>Ainda não há testemunhos publicados.</p>
+        ) : (
+          <div className="testi-grid" data-reveal>
+            {testemunhos.map((t, i) => {
+              const [c1, c2] = CORES[i % CORES.length];
+              return (
+                <div className="testi" key={t.id}>
+                  <p>&quot;{t.mensagem}&quot;</p>
+                  <div className="who">
+                    <div className="avatar" style={{ "--c1": c1, "--c2": c2 } as React.CSSProperties}></div>
+                    <div><strong>{t.autor}</strong>{t.cargo && <span>{t.cargo}</span>}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="testi">
-            <p>&quot;Ser voluntária aqui mudou a forma como vejo o meu próprio país.&quot;</p>
-            <div className="who">
-              <div className="avatar" style={{ "--c1": "#0F3B36", "--c2": "#1B1B16" } as React.CSSProperties}></div>
-              <div><strong>Beatriz K.</strong><span>Voluntária desde 2024</span></div>
-            </div>
-          </div>
-          <div className="testi">
-            <p>&quot;A transparência dos relatórios foi o que nos convenceu a ser parceiros fixos.&quot;</p>
-            <div className="who">
-              <div className="avatar" style={{ "--c1": "#D6473F", "--c2": "#B5502F" } as React.CSSProperties}></div>
-              <div><strong>Grupo Sanzala</strong><span>Parceiro institucional</span></div>
-            </div>
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="pad wrap" id="transparencia">
@@ -299,4 +425,4 @@ export default function Home() {
       </section>
     </>
   );
-} 
+}

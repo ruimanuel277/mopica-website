@@ -35,14 +35,14 @@ export default function RootLayout({
             </a>
             <div className="nav-links">
               <a href="/#atividades">Atividades</a>
-              <a href="/#doar">Doar</a>
+              <a href="/doacoes">Doar</a>
               <a href="/#parceiros">Parceiros</a>
               <a href="/#videos">Vídeos</a>
               <a href="/#transparencia">Transparência</a>
               <a href="/sobre">Sobre</a>
               <a href="/contacto">Contacto</a>
             </div>
-            <a href="/#doar" className="btn-donate">Doar agora</a>
+            <a href="/doacoes" className="btn-donate">Doar agora</a>
             <button className="burger">☰</button>
           </nav>
         </header>
@@ -80,13 +80,13 @@ export default function RootLayout({
               <div>
                 <h4>Navegação</h4>
                 <a href="/#atividades">Atividades</a>
-                <a href="/#doar">Doar</a>
+                <a href="/doacoes">Doar</a>
                 <a href="/#parceiros">Parceiros</a>
                 <a href="/#videos">Vídeos</a>
               </div>
               <div>
                 <h4>Envolva-se</h4>
-                <a href="/#voluntariar">Seja voluntário</a>
+                <a href="/voluntarios">Seja voluntário</a>
                 <a href="/#transparencia">Transparência</a>
                 <a href="/sobre">Sobre nós</a>
                 <a href="/contacto">Contacto</a>
