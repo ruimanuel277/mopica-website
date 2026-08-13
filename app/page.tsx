@@ -11,6 +11,7 @@ type Atividade = {
   categoria: string;
   local: string;
   data: string;
+  imagem_url: string;
 };
 
 type AtividadeRow = Omit<Atividade, "descricao"> & { "descriçao": string };
@@ -215,6 +216,13 @@ export default function Home() {
               return (
                 <div className="t-card" key={a.id}>
                   <div className="t-thumb" style={{ "--c1": c1, "--c2": c2 } as React.CSSProperties}>
+                    {a.imagem_url && (
+                      <img
+                        src={a.imagem_url}
+                        alt={a.titulo}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    )}
                     {a.categoria && <span className="tag">{a.categoria}</span>}
                   </div>
                   <div className="t-body">

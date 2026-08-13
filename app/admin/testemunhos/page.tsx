@@ -4,15 +4,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import AdminGuard from "../AdminGuard";
 import AdminNav from "../AdminNav";
+import ImagemUpload from "../ImagemUpload";
 
 type Testemunho = {
   id: number;
   autor: string;
   cargo: string;
   mensagem: string;
+  foto_url: string;
 };
 
-const FORM_VAZIO = { autor: "", cargo: "", mensagem: "" };
+const FORM_VAZIO = { autor: "", cargo: "", mensagem: "", foto_url: "" };
 
 export default function AdminTestemunhos() {
   const [lista, setLista] = useState<Testemunho[]>([]);
@@ -22,7 +24,7 @@ export default function AdminTestemunhos() {
   const carregar = async () => {
     const { data } = await supabase
       .from("Testemunhas")
-      .select("id, autor:Autor, cargo:Cargo, mensagem:Mensagem")
+      .select("id, autor:Autor, cargo:Cargo, mensagem:Mensagem, foto_url:Foto_url")
       .order("id", { ascending: false });
     if (data) setLista(data as Testemunho[]);
   };
@@ -33,7 +35,7 @@ export default function AdminTestemunhos() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dados = { Autor: form.autor, Cargo: form.cargo, Mensagem: form.mensagem };
+    const dados = { Autor: form.autor, Cargo: form.cargo, Mensagem: form.mensagem, Foto_url: form.foto_url };
 
     const { error } = editandoId
       ? await supabase.from("Testemunhas").update(dados).eq("id", editandoId)
@@ -50,7 +52,7 @@ export default function AdminTestemunhos() {
 
   const handleEditar = (t: Testemunho) => {
     setEditandoId(t.id);
-    setForm({ autor: t.autor ?? "", cargo: t.cargo ?? "", mensagem: t.mensagem ?? "" });
+    setForm({ autor: t.autor ?? "", cargo: t.cargo ?? "", mensagem: t.mensagem ?? "", foto_url: t.foto_url ?? "" });
   };
 
   const cancelarEdicao = () => {
@@ -81,6 +83,12 @@ export default function AdminTestemunhos() {
             <input className="form-field" placeholder="Nome da pessoa" value={form.autor} onChange={(e) => setForm({ ...form, autor: e.target.value })} required />
             <input className="form-field" placeholder="Cargo / local (opcional)" value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} />
             <textarea className="form-field" placeholder="Texto do testemunho" value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} required />
+            <ImagemUpload
+              pasta="testemunhos"
+              valor={form.foto_url}
+              onChange={(url) => setForm({ ...form, foto_url: url })}
+              label="Foto (opcional)"
+            />
             <div style={{ display: "flex", gap: "10px" }}>
               <button type="submit" className="btn-donate-full">
                 {editandoId ? "Guardar alterações" : "Adicionar testemunho"}

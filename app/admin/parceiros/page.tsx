@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import AdminGuard from "../AdminGuard";
 import AdminNav from "../AdminNav";
+import ImagemUpload from "../ImagemUpload";
 
 type Parceiro = {
   id: number;
@@ -86,7 +87,12 @@ export default function AdminParceiros() {
           <form onSubmit={handleSubmit} className="form-stack">
             <input className="form-field" placeholder="Nome do parceiro" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
             <input className="form-field" placeholder="Nível (ex: Institucional, Ouro, Prata)" value={form.nivel} onChange={(e) => setForm({ ...form, nivel: e.target.value })} />
-            <input className="form-field" placeholder="URL do logo" value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} />
+            <ImagemUpload
+              pasta="parceiros"
+              valor={form.logo_url}
+              onChange={(url) => setForm({ ...form, logo_url: url })}
+              label="Logo"
+            />
             <input className="form-field" placeholder="URL do site do parceiro" value={form.site_url} onChange={(e) => setForm({ ...form, site_url: e.target.value })} />
             <div style={{ display: "flex", gap: "10px" }}>
               <button type="submit" className="btn-donate-full">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import AdminGuard from "./AdminGuard";
 import AdminNav from "./AdminNav";
+import ImagemUpload from "./ImagemUpload";
 
 type Atividade = {
   id: number;
@@ -80,7 +81,12 @@ export default function AdminPanel() {
             <input className="form-field" placeholder="Categoria (ex: Educação, Saúde)" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
             <input className="form-field" placeholder="Local (ex: Huambo)" value={form.local} onChange={(e) => setForm({ ...form, local: e.target.value })} />
             <input className="form-field" type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} />
-            <input className="form-field" placeholder="URL da imagem (opcional)" value={form.imagem_url} onChange={(e) => setForm({ ...form, imagem_url: e.target.value })} />
+            <ImagemUpload
+              pasta="atividades"
+              valor={form.imagem_url}
+              onChange={(url) => setForm({ ...form, imagem_url: url })}
+              label="Imagem (opcional)"
+            />
             <button type="submit" className="btn-donate-full">Adicionar atividade</button>
           </form>
         </div>
