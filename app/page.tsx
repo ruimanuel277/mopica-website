@@ -128,6 +128,10 @@ export default function Home() {
     );
     document.querySelectorAll("[data-reveal]").forEach((el) => observer.observe(el));
 
+    return () => observer.disconnect();
+  }, [atividades, parceiros, testemunhos, videos]);
+
+  useEffect(() => {
     const amountButtons = document.querySelectorAll(".amount");
     const handleAmountClick = (btn: Element) => () => {
       amountButtons.forEach((b) => b.classList.remove("active"));
@@ -141,8 +145,6 @@ export default function Home() {
       btn.classList.add("active");
     };
     toggleButtons.forEach((btn) => btn.addEventListener("click", handleToggleClick(btn)));
-
-    return () => observer.disconnect();
   }, []);
 
   return (
