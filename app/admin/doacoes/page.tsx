@@ -11,6 +11,8 @@ type Doacao = {
   valor: number;
   moeda: string;
   metodo: string;
+  estado: string | null;
+  email: string | null;
   created_at: string;
 };
 
@@ -53,7 +55,9 @@ export default function AdminDoacoes() {
                   <strong>{d.nome || "Doação anónima"}</strong> —{" "}
                   {d.valor.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} {d.moeda}
                   <div style={{ fontSize: "0.85rem", marginTop: "4px", opacity: 0.8 }}>
-                    Método: {d.metodo} · {new Date(d.created_at).toLocaleString("pt-PT")}
+                    Método: {d.metodo} · Estado: {d.estado || "pendente"} ·{" "}
+                    {new Date(d.created_at).toLocaleString("pt-PT")}
+                    {d.email && <> · {d.email}</>}
                   </div>
                 </div>
               </div>

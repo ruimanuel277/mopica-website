@@ -10,6 +10,14 @@ insert into storage.buckets (id, name, public)
 values ('imagens', 'imagens', true)
 on conflict (id) do update set public = true;
 
+-- storage.buckets tem RLS ativo por omissão: sem esta política, o endpoint
+-- de upload não consegue "ver" o bucket e devolve "Bucket not found" mesmo
+-- ele existindo.
+drop policy if exists "bucket imagens visivel" on storage.buckets;
+create policy "bucket imagens visivel" on storage.buckets
+  for select to anon, authenticated
+  using (id = 'imagens');
+
 -- =========================================================
 -- 2. POLÍTICAS DE ACESSO (storage.objects)
 -- =========================================================
