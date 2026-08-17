@@ -18,11 +18,12 @@ type Atividade = {
 
 type AtividadeRow = Omit<Atividade, "descricao"> & { "descriçao": string };
 
+const FORM_VAZIO = { titulo: "", descricao: "", categoria: "", local: "", data: "", imagem_url: "" };
+
 export default function AdminPanel() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
-  const [form, setForm] = useState({
-    titulo: "", descricao: "", categoria: "", local: "", data: "", imagem_url: "",
-  });
+  const [form, setForm] = useState(FORM_VAZIO);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
 
   const carregarAtividades = async () => {
     const { data } = await supabase.from("atividades").select("*").order("id", { ascending: false });
@@ -47,18 +48,39 @@ export default function AdminPanel() {
       data: form.data === "" ? null : form.data,
       imagem_url: form.imagem_url,
     };
-    const { error } = await supabase.from("atividades").insert([dadosParaEnviar]);
+    const { error } = editandoId
+      ? await supabase.from("atividades").update(dadosParaEnviar).eq("id", editandoId)
+      : await supabase.from("atividades").insert([dadosParaEnviar]);
     if (error) {
       alert("Erro: " + error.message);
       console.log(error);
       return;
     }
-    setForm({ titulo: "", descricao: "", categoria: "", local: "", data: "", imagem_url: "" });
+    setForm(FORM_VAZIO);
+    setEditandoId(null);
     carregarAtividades();
+  };
+
+  const handleEditar = (a: Atividade) => {
+    setEditandoId(a.id);
+    setForm({
+      titulo: a.titulo ?? "",
+      descricao: a.descricao ?? "",
+      categoria: a.categoria ?? "",
+      local: a.local ?? "",
+      data: a.data ?? "",
+      imagem_url: a.imagem_url ?? "",
+    });
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setForm(FORM_VAZIO);
   };
 
   const handleDelete = async (id: number) => {
     await supabase.from("atividades").delete().eq("id", id);
+    if (editandoId === id) cancelarEdicao();
     carregarAtividades();
   };
 
@@ -74,7 +96,7 @@ export default function AdminPanel() {
         </div>
 
         <div className="donate-panel" style={{ marginBottom: "40px" }}>
-          <h3 style={{ marginBottom: "16px" }}>Adicionar nova atividade</h3>
+          <h3 style={{ marginBottom: "16px" }}>{editandoId ? "Editar atividade" : "Adicionar nova atividade"}</h3>
           <form onSubmit={handleSubmit} className="form-stack">
             <input className="form-field" placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} required />
             <textarea className="form-field" placeholder="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} required />
@@ -87,7 +109,14 @@ export default function AdminPanel() {
               onChange={(url) => setForm({ ...form, imagem_url: url })}
               label="Imagem (opcional)"
             />
-            <button type="submit" className="btn-donate-full">Adicionar atividade</button>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button type="submit" className="btn-donate-full">
+                {editandoId ? "Guardar alterações" : "Adicionar atividade"}
+              </button>
+              {editandoId && (
+                <button type="button" onClick={cancelarEdicao} className="btn-ghost">Cancelar</button>
+              )}
+            </div>
           </form>
         </div>
 
@@ -99,6 +128,7 @@ export default function AdminPanel() {
                 <strong>{a.titulo}</strong> — {a.categoria} · {a.local}
               </div>
               <div className="admin-row-actions">
+                <button onClick={() => handleEditar(a)} className="btn-small btn-edit">Editar</button>
                 <button onClick={() => handleDelete(a.id)} className="btn-small btn-delete">Apagar</button>
               </div>
             </div>
