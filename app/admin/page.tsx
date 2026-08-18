@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import AdminGuard from "./AdminGuard";
 import AdminNav from "./AdminNav";
-import ImagemUpload from "./ImagemUpload";
+import ImagensUpload from "./ImagensUpload";
 
 type Atividade = {
   id: number;
@@ -14,11 +14,12 @@ type Atividade = {
   local: string;
   data: string;
   imagem_url: string;
+  imagens: string[] | null;
 };
 
 type AtividadeRow = Omit<Atividade, "descricao"> & { "descriçao": string };
 
-const FORM_VAZIO = { titulo: "", descricao: "", categoria: "", local: "", data: "", imagem_url: "" };
+const FORM_VAZIO = { titulo: "", descricao: "", categoria: "", local: "", data: "", imagens: [] as string[] };
 
 export default function AdminPanel() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -46,7 +47,7 @@ export default function AdminPanel() {
       categoria: form.categoria,
       local: form.local,
       data: form.data === "" ? null : form.data,
-      imagem_url: form.imagem_url,
+      imagens: form.imagens,
     };
     const { error } = editandoId
       ? await supabase.from("atividades").update(dadosParaEnviar).eq("id", editandoId)
@@ -69,7 +70,7 @@ export default function AdminPanel() {
       categoria: a.categoria ?? "",
       local: a.local ?? "",
       data: a.data ?? "",
-      imagem_url: a.imagem_url ?? "",
+      imagens: a.imagens && a.imagens.length > 0 ? a.imagens : a.imagem_url ? [a.imagem_url] : [],
     });
   };
 
@@ -103,11 +104,11 @@ export default function AdminPanel() {
             <input className="form-field" placeholder="Categoria (ex: Educação, Saúde)" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
             <input className="form-field" placeholder="Local (ex: Huambo)" value={form.local} onChange={(e) => setForm({ ...form, local: e.target.value })} />
             <input className="form-field" type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} />
-            <ImagemUpload
+            <ImagensUpload
               pasta="atividades"
-              valor={form.imagem_url}
-              onChange={(url) => setForm({ ...form, imagem_url: url })}
-              label="Imagem (opcional)"
+              valores={form.imagens}
+              onChange={(urls) => setForm({ ...form, imagens: urls })}
+              label="Imagens (opcional)"
             />
             <div style={{ display: "flex", gap: "10px" }}>
               <button type="submit" className="btn-donate-full">

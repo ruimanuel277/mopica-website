@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "./lib/supabase";
+import AtividadeThumb from "./AtividadeThumb";
 
 type Atividade = {
   id: number;
@@ -12,6 +13,7 @@ type Atividade = {
   local: string;
   data: string;
   imagem_url: string;
+  imagens: string[] | null;
 };
 
 type AtividadeRow = Omit<Atividade, "descricao"> & { "descriçao": string };
@@ -215,16 +217,12 @@ export default function Home() {
               const [c1, c2] = CORES[i % CORES.length];
               return (
                 <div className="t-card" key={a.id}>
-                  <div className="t-thumb" style={{ "--c1": c1, "--c2": c2 } as React.CSSProperties}>
-                    {a.imagem_url && (
-                      <img
-                        src={a.imagem_url}
-                        alt={a.titulo}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
-                    {a.categoria && <span className="tag">{a.categoria}</span>}
-                  </div>
+                  <AtividadeThumb
+                    imagens={a.imagens && a.imagens.length > 0 ? a.imagens : a.imagem_url ? [a.imagem_url] : []}
+                    titulo={a.titulo}
+                    categoria={a.categoria}
+                    corVars={{ "--c1": c1, "--c2": c2 } as React.CSSProperties}
+                  />
                   <div className="t-body">
                     <div className="t-date">
                       {a.data ? formatarData(a.data) : ""}{a.data && a.local ? " · " : ""}{a.local}
