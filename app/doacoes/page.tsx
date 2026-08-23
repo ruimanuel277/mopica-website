@@ -27,7 +27,7 @@ function Instrucoes({ metodo, valor, moeda }: { metodo: string; valor: string; m
     case "Multicaixa Express":
       return (
         <p style={{ fontSize: "0.9rem", lineHeight: 1.7 }}>
-          Envie {valor} {moeda} por Multicaixa Express para o número <strong>+244 935 518 305</strong>. Depois de
+          Envie {valor} {moeda} por Multicaixa Express para o número <strong>930 00 00 60</strong>. Depois de
           concluir o pagamento, envie o comprovativo por email para{" "}
           <a href="mailto:ong@mopica.org" style={{ textDecoration: "underline" }}>ong@mopica.org</a>.
         </p>
