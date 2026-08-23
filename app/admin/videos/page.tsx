@@ -11,11 +11,13 @@ type Video = {
   video_url: string;
 };
 
-const FORM_VAZIO = { titulo: "", video_url: "" };
+type LinhaVideo = { titulo: string; video_url: string };
+
+const LINHA_VAZIA: LinhaVideo = { titulo: "", video_url: "" };
 
 export default function AdminVideos() {
   const [lista, setLista] = useState<Video[]>([]);
-  const [form, setForm] = useState(FORM_VAZIO);
+  const [linhas, setLinhas] = useState<LinhaVideo[]>([LINHA_VAZIA]);
   const [editandoId, setEditandoId] = useState<number | null>(null);
 
   const carregar = async () => {
@@ -32,30 +34,42 @@ export default function AdminVideos() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dados = { Titulo: form.titulo, Video_url: form.video_url };
 
     const { error } = editandoId
-      ? await supabase.from("Videos").update(dados).eq("id", editandoId)
-      : await supabase.from("Videos").insert([dados]);
+      ? await supabase
+          .from("Videos")
+          .update({ Titulo: linhas[0].titulo, Video_url: linhas[0].video_url })
+          .eq("id", editandoId)
+      : await supabase
+          .from("Videos")
+          .insert(linhas.map((l) => ({ Titulo: l.titulo, Video_url: l.video_url })));
 
     if (error) {
       alert("Erro: " + error.message);
       return;
     }
-    setForm(FORM_VAZIO);
+    setLinhas([LINHA_VAZIA]);
     setEditandoId(null);
     carregar();
   };
 
   const handleEditar = (v: Video) => {
     setEditandoId(v.id);
-    setForm({ titulo: v.titulo ?? "", video_url: v.video_url ?? "" });
+    setLinhas([{ titulo: v.titulo ?? "", video_url: v.video_url ?? "" }]);
   };
 
   const cancelarEdicao = () => {
     setEditandoId(null);
-    setForm(FORM_VAZIO);
+    setLinhas([LINHA_VAZIA]);
   };
+
+  const atualizarLinha = (indice: number, campo: keyof LinhaVideo, valor: string) => {
+    setLinhas((atual) => atual.map((l, i) => (i === indice ? { ...l, [campo]: valor } : l)));
+  };
+
+  const adicionarLinha = () => setLinhas((atual) => [...atual, { ...LINHA_VAZIA }]);
+
+  const removerLinha = (indice: number) => setLinhas((atual) => atual.filter((_, i) => i !== indice));
 
   const handleDelete = async (id: number) => {
     await supabase.from("Videos").delete().eq("id", id);
@@ -75,13 +89,48 @@ export default function AdminVideos() {
         </div>
 
         <div className="donate-panel" style={{ marginBottom: "40px" }}>
-          <h3 style={{ marginBottom: "16px" }}>{editandoId ? "Editar vídeo" : "Adicionar novo vídeo"}</h3>
+          <h3 style={{ marginBottom: "16px" }}>{editandoId ? "Editar vídeo" : "Adicionar novo(s) vídeo(s)"}</h3>
           <form onSubmit={handleSubmit} className="form-stack">
-            <input className="form-field" placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} required />
-            <input className="form-field" placeholder="URL do vídeo (YouTube ou Vimeo)" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} required />
+            {linhas.map((linha, i) => (
+              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
+                  <input
+                    className="form-field"
+                    placeholder="Título"
+                    value={linha.titulo}
+                    onChange={(e) => atualizarLinha(i, "titulo", e.target.value)}
+                    required
+                  />
+                  <input
+                    className="form-field"
+                    placeholder="URL do vídeo (YouTube ou Vimeo)"
+                    value={linha.video_url}
+                    onChange={(e) => atualizarLinha(i, "video_url", e.target.value)}
+                    required
+                  />
+                </div>
+                {!editandoId && linhas.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removerLinha(i)}
+                    className="btn-small btn-delete"
+                    style={{ marginTop: "2px" }}
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+            ))}
+            {!editandoId && (
+              <button type="button" onClick={adicionarLinha} className="btn-ghost">+ Adicionar outro vídeo</button>
+            )}
             <div style={{ display: "flex", gap: "10px" }}>
               <button type="submit" className="btn-donate-full">
-                {editandoId ? "Guardar alterações" : "Adicionar vídeo"}
+                {editandoId
+                  ? "Guardar alterações"
+                  : linhas.length > 1
+                    ? `Adicionar ${linhas.length} vídeos`
+                    : "Adicionar vídeo"}
               </button>
               {editandoId && (
                 <button type="button" onClick={cancelarEdicao} className="btn-ghost">Cancelar</button>
