@@ -268,8 +268,9 @@ export default function Home() {
 
             <div className="bank-details">
               <div className="eyebrow" style={{ color: "rgba(246,239,228,0.5)" }}>Transferência bancária direta</div>
+              <div className="bank-row"><span>Banco</span><span>Banco BIC</span></div>
               <div className="bank-row"><span>NIB</span><span>0051 0000 4017 1306 1515</span></div>
-              <div className="bank-row"><span>IBAN</span><span>AO06 0051 0000 4017 1306 1515</span></div>
+              <div className="bank-row"><span>IBAN</span><span>AO06 0051 0000 4017 1306 1515 7</span></div>
               <div className="bank-row"><span>SWIFT</span><span>BCCBAOLU</span></div>
             </div>
           </div>

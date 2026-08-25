@@ -14,8 +14,9 @@ function Instrucoes({ metodo, valor, moeda }: { metodo: string; valor: string; m
     case "IBAN / Transferência":
       return (
         <div className="bank-details" style={{ borderTop: "none", paddingTop: 0, marginTop: 0 }}>
+          <div className="bank-row"><span>Banco</span><span>Banco BIC</span></div>
           <div className="bank-row"><span>NIB</span><span>0051 0000 4017 1306 1515</span></div>
-          <div className="bank-row"><span>IBAN</span><span>AO06 0051 0000 4017 1306 1515</span></div>
+          <div className="bank-row"><span>IBAN</span><span>AO06 0051 0000 4017 1306 1515 7</span></div>
           <div className="bank-row"><span>SWIFT</span><span>BCCBAOLU</span></div>
           <p style={{ fontSize: "0.85rem", marginTop: "14px", opacity: 0.8 }}>
             Após a transferência de {valor} {moeda}, envie o comprovativo para{" "}
