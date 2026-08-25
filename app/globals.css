@@ -196,6 +196,8 @@ section.pad{padding:88px 0;}
   font-size:0.78rem;padding:7px 0;color:rgba(246,239,228,0.85);
 }
 .bank-row span:first-child{opacity:0.5;}
+.donate-panel .bank-row{color:var(--ink);}
+.donate-panel .bank-row span:first-child{opacity:0.55;}
 
 .donate-panel{background:var(--sand);color:var(--ink);border-radius:20px;padding:30px;}
 .amount-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 20px;}
