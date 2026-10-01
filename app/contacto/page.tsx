@@ -48,7 +48,7 @@ export default function Contacto() {
         <p>Estamos disponíveis para responder a qualquer questão sobre a nossa missão.</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
+      <div className="two-col">
         <div>
           <h3 style={{ marginBottom: "16px", fontSize: "1.1rem" }}>Informações de contacto</h3>
           <div style={{ marginBottom: "14px" }}>
@@ -66,7 +66,7 @@ export default function Contacto() {
           </div>
         </div>
 
-        <div className="donate-panel" style={{ padding: "30px" }}>
+        <div className="donate-panel">
           <h3 style={{ marginBottom: "16px", fontSize: "1.1rem" }}>Envie-nos uma mensagem</h3>
           <form onSubmit={handleSubmit} className="form-stack">
             <input

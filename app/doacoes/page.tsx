@@ -288,7 +288,7 @@ export default function Doacoes() {
         <p>A sua doação — de qualquer lugar do mundo — chega diretamente a quem precisa dela.</p>
       </div>
 
-      <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
         <button
           type="button"
           className={aba === "cartao" ? "btn-donate-full" : "btn-ghost"}
@@ -307,7 +307,7 @@ export default function Doacoes() {
         </button>
       </div>
 
-      <div className="donate-panel" style={{ padding: "30px" }}>
+      <div className="donate-panel">
         {aba === "cartao" ? <DoacaoCartao /> : <DoacaoManual />}
       </div>
     </section>

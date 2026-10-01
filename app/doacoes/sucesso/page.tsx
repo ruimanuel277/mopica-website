@@ -25,7 +25,7 @@ export default async function DoacoesSucesso({
 
   return (
     <section className="pad wrap" style={{ maxWidth: "620px", margin: "0 auto" }}>
-      <div className="donate-panel" style={{ padding: "30px", textAlign: "center" }}>
+      <div className="donate-panel" style={{ textAlign: "center" }}>
         <h2 style={{ marginBottom: "16px" }}>Obrigado pela sua doação!</h2>
         <p style={{ fontSize: "0.95rem", opacity: 0.8, marginBottom: "22px" }}>
           {resumo

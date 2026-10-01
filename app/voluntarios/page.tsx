@@ -62,7 +62,7 @@ export default function Voluntarios() {
         <p>Junte-se a nós e ajude a mudar vidas em Angola.</p>
       </div>
 
-      <div className="donate-panel" style={{ padding: "30px" }}>
+      <div className="donate-panel">
         <form onSubmit={handleSubmit} className="form-stack">
           <input
             className="form-field"

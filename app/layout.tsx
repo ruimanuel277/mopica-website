@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Header from "./Header";
+import WhatsAppButton from "./WhatsAppButton";
 
 export const metadata: Metadata = {
   title: "MOPICA — Movimento para Proteção Integral de Crianças e Adolescentes Vulneráveis",
@@ -27,25 +29,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <header>
-          <nav className="wrap">
-            <a href="/" className="logo">
-              <span className="dot"></span>MOPICA
-              <span className="verified-badge">Registada · Certificada</span>
-            </a>
-            <div className="nav-links">
-              <a href="/#atividades">Atividades</a>
-              <a href="/doacoes">Doar</a>
-              <a href="/#parceiros">Parceiros</a>
-              <a href="/#videos">Vídeos</a>
-              <a href="/#transparencia">Transparência</a>
-              <a href="/sobre">Sobre</a>
-              <a href="/contacto">Contacto</a>
-            </div>
-            <a href="/doacoes" className="btn-donate">Doar agora</a>
-            <button className="burger">☰</button>
-          </nav>
-        </header>
+        <Header />
 
         <div className="faixa">
           <span style={{ background: "var(--sun)" }}></span>
@@ -113,6 +97,8 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+
+        <WhatsAppButton />
       </body>
     </html>
   );
