@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "./lib/supabase";
 import AtividadeThumb from "./AtividadeThumb";
 import MetodosPagamento from "./MetodosPagamento";
+import { youtubeId } from "./lib/youtube";
 
 type Atividade = {
   id: number;
@@ -69,12 +70,8 @@ function formatarData(data: string) {
 function embedUrl(url: string): string | null {
   try {
     const u = new URL(url);
-    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {
-      const id = u.hostname.includes("youtu.be")
-        ? u.pathname.slice(1)
-        : u.searchParams.get("v") ?? u.pathname.split("/embed/")[1] ?? "";
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
+    const idYoutube = youtubeId(url);
+    if (idYoutube) return `https://www.youtube.com/embed/${idYoutube}`;
     if (u.hostname.includes("vimeo.com")) {
       const id = u.pathname.split("/").filter(Boolean).pop();
       return id ? `https://player.vimeo.com/video/${id}` : null;
@@ -233,10 +230,11 @@ export default function Home() {
           <div className="timeline" data-reveal>
             {atividades.map((a, i) => {
               const [c1, c2] = CORES[i % CORES.length];
+              const fotos = a.imagens && a.imagens.length > 0 ? a.imagens : a.imagem_url ? [a.imagem_url] : [];
               return (
                 <div className="t-card" key={a.id}>
                   <AtividadeThumb
-                    imagens={a.imagens && a.imagens.length > 0 ? a.imagens : a.imagem_url ? [a.imagem_url] : []}
+                    imagens={fotos}
                     titulo={a.titulo}
                     categoria={a.categoria}
                     corVars={{ "--c1": c1, "--c2": c2 } as React.CSSProperties}
@@ -245,8 +243,11 @@ export default function Home() {
                     <div className="t-date">
                       {a.data ? formatarData(a.data) : ""}{a.data && a.local ? " · " : ""}{a.local}
                     </div>
-                    <h3>{a.titulo}</h3>
+                    <h3><Link href={`/atividades/${a.id}`}>{a.titulo}</Link></h3>
                     <p>{a.descricao}</p>
+                    <Link href={`/atividades/${a.id}`} className="t-link">
+                      {fotos.length > 1 ? `Ver galeria (${fotos.length} fotos) →` : "Ver atividade →"}
+                    </Link>
                   </div>
                 </div>
               );

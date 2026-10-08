@@ -5,6 +5,16 @@ import { supabase } from "../lib/supabase";
 import AdminGuard from "./AdminGuard";
 import AdminNav from "./AdminNav";
 import ImagensUpload from "./ImagensUpload";
+import { apagarImagens } from "../lib/uploadImagem";
+
+// Limpeza do bucket: se falhar, a atividade já está gravada, por isso só regista o erro
+async function apagarSemErro(urls: string[]) {
+  try {
+    await apagarImagens(urls);
+  } catch (err) {
+    console.error("Erro ao apagar fotos do bucket:", err);
+  }
+}
 
 type Atividade = {
   id: number;
@@ -25,6 +35,12 @@ export default function AdminPanel() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [form, setForm] = useState(FORM_VAZIO);
   const [editandoId, setEditandoId] = useState<number | null>(null);
+  // Fotos já gravadas na atividade em edição, e todas as que passaram pelo formulário
+  // (gravadas + enviadas agora): serve para apagar do bucket as que forem removidas.
+  const [originais, setOriginais] = useState<string[]>([]);
+  const [conhecidas, setConhecidas] = useState<string[]>([]);
+  const [enviandoFotos, setEnviandoFotos] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   const carregarAtividades = async () => {
     const { data } = await supabase.from("atividades").select("*").order("id", { ascending: false });
@@ -48,40 +64,64 @@ export default function AdminPanel() {
       local: form.local,
       data: form.data === "" ? null : form.data,
       imagens: form.imagens,
+      // ao editar, a coluna antiga imagem_url fica vazia: as fotos vivem todas em `imagens`
+      // (texto vazio e não null, para não depender de a coluna aceitar null)
+      ...(editandoId ? { imagem_url: "" } : {}),
     };
+    setSalvando(true);
     const { error } = editandoId
       ? await supabase.from("atividades").update(dadosParaEnviar).eq("id", editandoId)
       : await supabase.from("atividades").insert([dadosParaEnviar]);
     if (error) {
+      setSalvando(false);
       alert("Erro: " + error.message);
       console.log(error);
       return;
     }
-    setForm(FORM_VAZIO);
-    setEditandoId(null);
+    await apagarSemErro(conhecidas.filter((u) => !form.imagens.includes(u)));
+    setSalvando(false);
+    limparFormulario();
     carregarAtividades();
   };
 
-  const handleEditar = (a: Atividade) => {
+  const limparFormulario = () => {
+    setEditandoId(null);
+    setForm(FORM_VAZIO);
+    setOriginais([]);
+    setConhecidas([]);
+  };
+
+  const handleEditar = async (a: Atividade) => {
+    // fotos enviadas mas não gravadas na edição anterior deixam de ser precisas
+    await apagarSemErro(conhecidas.filter((u) => !originais.includes(u)));
+    const imagens = a.imagens && a.imagens.length > 0 ? a.imagens : a.imagem_url ? [a.imagem_url] : [];
     setEditandoId(a.id);
+    setOriginais(imagens);
+    setConhecidas(imagens);
     setForm({
       titulo: a.titulo ?? "",
       descricao: a.descricao ?? "",
       categoria: a.categoria ?? "",
       local: a.local ?? "",
       data: a.data ?? "",
-      imagens: a.imagens && a.imagens.length > 0 ? a.imagens : a.imagem_url ? [a.imagem_url] : [],
+      imagens,
     });
   };
 
-  const cancelarEdicao = () => {
-    setEditandoId(null);
-    setForm(FORM_VAZIO);
+  const cancelarEdicao = async () => {
+    await apagarSemErro(conhecidas.filter((u) => !originais.includes(u)));
+    limparFormulario();
   };
 
-  const handleDelete = async (id: number) => {
-    await supabase.from("atividades").delete().eq("id", id);
-    if (editandoId === id) cancelarEdicao();
+  const handleDelete = async (a: Atividade) => {
+    if (!confirm(`Apagar a atividade "${a.titulo}" e as suas fotos?`)) return;
+    const { error } = await supabase.from("atividades").delete().eq("id", a.id);
+    if (error) {
+      alert("Erro: " + error.message);
+      return;
+    }
+    await apagarSemErro([...(a.imagens ?? []), ...(a.imagem_url ? [a.imagem_url] : [])]);
+    if (editandoId === a.id) limparFormulario();
     carregarAtividades();
   };
 
@@ -107,12 +147,23 @@ export default function AdminPanel() {
             <ImagensUpload
               pasta="atividades"
               valores={form.imagens}
-              onChange={(urls) => setForm({ ...form, imagens: urls })}
-              label="Imagens (opcional)"
+              onChange={(urls) => {
+                // forma funcional: o envio demora e o resto do formulário pode ter mudado entretanto
+                setForm((atual) => ({ ...atual, imagens: urls }));
+                setConhecidas((atual) => Array.from(new Set([...atual, ...urls])));
+              }}
+              onEnviando={setEnviandoFotos}
+              label="Fotos (opcional)"
             />
             <div style={{ display: "flex", gap: "10px" }}>
-              <button type="submit" className="btn-donate-full">
-                {editandoId ? "Guardar alterações" : "Adicionar atividade"}
+              <button type="submit" className="btn-donate-full" disabled={enviandoFotos || salvando}>
+                {enviandoFotos
+                  ? "Aguarde o envio das fotos..."
+                  : salvando
+                    ? "A guardar..."
+                    : editandoId
+                      ? "Guardar alterações"
+                      : "Adicionar atividade"}
               </button>
               {editandoId && (
                 <button type="button" onClick={cancelarEdicao} className="btn-ghost">Cancelar</button>
@@ -130,7 +181,7 @@ export default function AdminPanel() {
               </div>
               <div className="admin-row-actions">
                 <button onClick={() => handleEditar(a)} className="btn-small btn-edit">Editar</button>
-                <button onClick={() => handleDelete(a.id)} className="btn-small btn-delete">Apagar</button>
+                <button onClick={() => handleDelete(a)} className="btn-small btn-delete">Apagar</button>
               </div>
             </div>
           ))}

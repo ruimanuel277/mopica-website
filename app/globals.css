@@ -403,6 +403,57 @@ footer{background:var(--ink);color:rgba(246,239,228,0.75);padding:56px 0 28px;}
   footer{padding-bottom:90px;}
 }
 
+.t-link{display:inline-block;margin-top:12px;font-size:0.82rem;font-weight:600;color:var(--clay);}
+.t-link:hover{text-decoration:underline;}
+
+/* Galeria pública da atividade + ecrã inteiro */
+.galeria-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.galeria-item{
+  aspect-ratio:1;border-radius:12px;overflow:hidden;padding:0;background:var(--sand-dim);display:block;
+}
+.galeria-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s;}
+.galeria-item:hover img{transform:scale(1.04);}
+.lightbox{
+  position:fixed;inset:0;z-index:200;background:#0a0a08;
+  display:flex;align-items:center;justify-content:center;padding:56px 16px;
+  animation:wa-in .18s ease;touch-action:pan-y;
+}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;user-select:none;}
+.lightbox-contador{
+  position:absolute;top:18px;left:50%;transform:translateX(-50%);
+  color:rgba(246,239,228,0.8);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;
+}
+.lightbox-btn{
+  position:absolute;width:48px;height:48px;border-radius:50%;
+  background:rgba(246,239,228,0.14);color:var(--sand);font-size:1.6rem;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+}
+.lightbox-btn:hover{background:rgba(246,239,228,0.26);}
+.lightbox-fechar{top:10px;right:12px;font-size:1.2rem;}
+.lightbox-anterior{left:12px;top:50%;transform:translateY(-50%);}
+.lightbox-seguinte{right:12px;top:50%;transform:translateY(-50%);}
+@media(max-width:560px){
+  .galeria-grid{grid-template-columns:repeat(3,1fr);gap:6px;}
+  .galeria-item{border-radius:8px;}
+  .lightbox-anterior, .lightbox-seguinte{top:auto;bottom:14px;transform:none;}
+}
+
+/* Upload de várias fotos no admin */
+.upload-box{
+  padding:12px 14px;border-radius:10px;border:1.5px solid rgba(27,27,22,0.15);
+  display:flex;flex-direction:column;gap:10px;
+}
+.upload-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.upload-thumb{position:relative;}
+.upload-thumb img{width:80px;height:80px;border-radius:8px;object-fit:cover;display:block;}
+.upload-thumb button{
+  position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;
+  background:var(--coral);color:#fff;font-size:0.85rem;line-height:22px;padding:0;
+}
+.upload-thumb button:disabled{opacity:0.4;cursor:not-allowed;}
+.upload-progress-track{height:8px;border-radius:100px;background:rgba(27,27,22,0.1);overflow:hidden;margin-bottom:6px;}
+.upload-progress-fill{height:100%;background:var(--coral);border-radius:100px;transition:width .2s;}
+
 [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .6s ease, transform .6s ease;}
 [data-reveal].in{opacity:1;transform:none;}
 
