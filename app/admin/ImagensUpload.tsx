@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { uploadImagem } from "../lib/uploadImagem";
+import { useId, useRef, useState } from "react";
+import { uploadImagem, type Etapa } from "../lib/uploadImagem";
 
-type Progresso = { feitas: number; total: number; atual: string };
+type Progresso = { feitas: number; total: number; etapa: Etapa };
+
+function descreverFicheiro(f: File) {
+  return `${f.type || "tipo desconhecido"}, ${(f.size / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export default function ImagensUpload({
   pasta,
@@ -21,6 +25,15 @@ export default function ImagensUpload({
   const [progresso, setProgresso] = useState<Progresso | null>(null);
   const [erros, setErros] = useState<string[]>([]);
   const [aviso, setAviso] = useState("");
+  const cancelado = useRef(false);
+  // permite cancelar de imediato, mesmo que a foto atual esteja pendurada
+  const pararEspera = useRef<(() => void) | null>(null);
+  const inputId = useId();
+
+  const cancelar = () => {
+    cancelado.current = true;
+    pararEspera.current?.();
+  };
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const ficheiros = Array.from(e.target.files ?? []);
@@ -32,31 +45,49 @@ export default function ImagensUpload({
       return;
     }
 
-    setProgresso({ feitas: 0, total: ficheiros.length, atual: ficheiros[0].name });
+    cancelado.current = false;
+    setProgresso({ feitas: 0, total: ficheiros.length, etapa: "a preparar" });
     onEnviando?.(true);
 
     // Uma foto de cada vez: no telemóvel, descodificar várias fotos grandes em
     // simultâneo pode esgotar a memória e recarregar a página.
     const urls: string[] = [];
     const falhas: string[] = [];
-    for (let i = 0; i < ficheiros.length; i++) {
-      setProgresso({ feitas: i, total: ficheiros.length, atual: ficheiros[i].name });
-      try {
-        urls.push(await uploadImagem(ficheiros[i], pasta, true));
-        // mostra logo cada foto enviada, para não se perder nada se algo falhar a meio
-        onChange([...valores, ...urls]);
-      } catch (err) {
-        falhas.push(`"${ficheiros[i].name}": ${(err as Error).message}`);
+    try {
+      for (let i = 0; i < ficheiros.length && !cancelado.current; i++) {
+        const f = ficheiros[i];
+        setProgresso({ feitas: i, total: ficheiros.length, etapa: "a preparar" });
+        try {
+          const url = await Promise.race([
+            uploadImagem(f, pasta, true, (etapa) => {
+              if (!cancelado.current) setProgresso({ feitas: i, total: ficheiros.length, etapa });
+            }),
+            new Promise<never>((_, reject) => {
+              pararEspera.current = () => reject(new Error("cancelado"));
+            }),
+          ]);
+          if (cancelado.current) break;
+          urls.push(url);
+          // mostra logo cada foto enviada, para não se perder nada se algo falhar a meio
+          onChange([...valores, ...urls]);
+        } catch (err) {
+          if (cancelado.current) break;
+          console.error("Falha ao enviar foto", f.name, err);
+          falhas.push(`"${f.name}" (${descreverFicheiro(f)}): ${(err as Error).message}`);
+        }
       }
+    } finally {
+      // aconteça o que acontecer, o campo de fotos volta a ficar disponível
+      pararEspera.current = null;
+      setProgresso(null);
+      onEnviando?.(false);
     }
 
-    setProgresso(null);
-    onEnviando?.(false);
     setErros(falhas);
-    if (urls.length > 0) {
-      setAviso(
-        `${urls.length} de ${ficheiros.length} foto(s) enviada(s). Carregue em "Guardar" para as gravar na atividade.`
-      );
+    if (cancelado.current) {
+      setAviso(`Envio cancelado. ${urls.length} foto(s) já tinham sido enviadas.`);
+    } else if (urls.length > 0) {
+      setAviso(`${urls.length} de ${ficheiros.length} foto(s) enviada(s). Carregue em "Guardar" para as gravar na atividade.`);
     }
   };
 
@@ -68,10 +99,10 @@ export default function ImagensUpload({
 
   return (
     <div className="upload-box">
-      <label style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+      <span style={{ fontSize: "0.8rem", opacity: 0.7 }}>
         {label ?? "Imagens"}
         {valores.length > 0 && ` · ${valores.length} foto(s)`}
-      </label>
+      </span>
       {valores.length > 0 && (
         <div className="upload-grid">
           {valores.map((url, i) => (
@@ -90,15 +121,39 @@ export default function ImagensUpload({
           ))}
         </div>
       )}
-      <input type="file" accept="image/*,.heic,.heif" multiple onChange={handleFiles} disabled={!!progresso} />
+
+      {/* o controlo nativo é minúsculo no telemóvel: fica escondido e usa-se um botão grande */}
+      <input
+        id={inputId}
+        className="upload-input"
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFiles}
+        disabled={!!progresso}
+      />
+      {!progresso && (
+        <label htmlFor={inputId} className="btn-ghost upload-escolher">
+          📷 {valores.length > 0 ? "Adicionar mais fotos" : "Escolher fotos"}
+        </label>
+      )}
+
       {progresso && (
         <div role="status" aria-live="polite">
           <div className="upload-progress-track">
             <div className="upload-progress-fill" style={{ width: `${Math.max(percentagem, 4)}%` }} />
           </div>
           <span style={{ fontSize: "0.8rem", opacity: 0.75 }}>
-            A enviar foto {progresso.feitas + 1} de {progresso.total} ({percentagem}%) — não feche esta página.
+            Foto {progresso.feitas + 1} de {progresso.total} ({percentagem}%): {progresso.etapa}... não feche esta página.
           </span>
+          <button
+            type="button"
+            className="btn-small btn-delete"
+            style={{ display: "block", marginTop: "8px" }}
+            onClick={cancelar}
+          >
+            Cancelar envio
+          </button>
         </div>
       )}
       {aviso && !progresso && <p className={erros.length ? "form-error" : "form-success"}>{aviso}</p>}

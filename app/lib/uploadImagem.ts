@@ -40,11 +40,48 @@ async function descodificar(file: File): Promise<ImageBitmap> {
   }
 }
 
+// Limites de tempo: no telemóvel uma etapa pode ficar pendurada (rede móvel, pouca
+// memória) e sem limite o envio nunca terminava, deixando o campo de fotos bloqueado.
+const LIMITE_HEIC_MS = 120_000;
+const LIMITE_PREPARAR_MS = 45_000;
+const LIMITE_ENVIO_MS = 120_000;
+
+function comLimite<T>(promessa: Promise<T>, ms: number, mensagem: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(mensagem)), ms);
+    promessa.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); }
+    );
+  });
+}
+
+export type Etapa = "a preparar" | "a converter HEIC para JPG" | "a enviar";
+
 // Converte para JPEG com no máximo 1600px de largura. Fotos já pequenas em JPEG/PNG/WebP
 // que não fiquem mais leves são enviadas como estão.
-async function prepararFoto(file: File): Promise<{ conteudo: Blob; extensao: string; tipo: string }> {
+async function prepararFoto(
+  file: File,
+  onEtapa?: (etapa: Etapa) => void
+): Promise<{ conteudo: Blob; extensao: string; tipo: string }> {
   if (file.type === "image/gif") return { conteudo: file, extensao: "gif", tipo: file.type };
+  const heic = await eHeic(file);
+  onEtapa?.(heic ? "a converter HEIC para JPG" : "a preparar");
+  const original = { conteudo: file as Blob, extensao: file.type.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg", tipo: file.type };
+  try {
+    return await comLimite(
+      reduzir(file),
+      heic ? LIMITE_HEIC_MS : LIMITE_PREPARAR_MS,
+      heic ? "a conversão da foto HEIC demorou demasiado" : "a preparação da foto demorou demasiado"
+    );
+  } catch (err) {
+    // Se não der para reduzir uma foto que o browser já sabe mostrar, envia-a como está
+    if (/^image\/(jpeg|png|webp)$/.test(file.type)) return original;
+    throw err;
+  }
+}
 
+async function reduzir(file: File): Promise<{ conteudo: Blob; extensao: string; tipo: string }> {
   const bitmap = await descodificar(file);
   const escala = Math.min(1, LARGURA_MAXIMA / bitmap.width);
   const largura = Math.round(bitmap.width * escala);
@@ -81,19 +118,32 @@ function mensagemErro(err: unknown): string {
 }
 
 // `reduzir` só para fotos: converte em JPEG, por isso não convém a logótipos PNG transparentes
-export async function uploadImagem(file: File, pasta: string, reduzir = false): Promise<string> {
+export async function uploadImagem(
+  file: File,
+  pasta: string,
+  reduzirFoto = false,
+  onEtapa?: (etapa: Etapa) => void
+): Promise<string> {
   let conteudo: Blob = file;
   let extensao = file.name.split(".").pop() || "jpg";
   let tipo = file.type || undefined;
-  if (reduzir) ({ conteudo, extensao, tipo } = await prepararFoto(file));
+  if (reduzirFoto) ({ conteudo, extensao, tipo } = await prepararFoto(file, onEtapa));
 
-  const caminho = `${pasta}/${crypto.randomUUID()}.${extensao.toLowerCase()}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(caminho, conteudo, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType: tipo,
-  });
-  if (error) throw new Error(mensagemErro(error));
+  onEtapa?.("a enviar");
+  // randomUUID não existe em browsers antigos de alguns telemóveis
+  const id = crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  const caminho = `${pasta}/${id}.${extensao.toLowerCase()}`;
+  let resultado;
+  try {
+    resultado = await comLimite(
+      supabase.storage.from(BUCKET).upload(caminho, conteudo, { cacheControl: "3600", upsert: false, contentType: tipo }),
+      LIMITE_ENVIO_MS,
+      "o envio demorou demasiado (ligação lenta?)"
+    );
+  } catch (err) {
+    throw new Error(mensagemErro(err));
+  }
+  if (resultado.error) throw new Error(mensagemErro(resultado.error));
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(caminho);
   return data.publicUrl;

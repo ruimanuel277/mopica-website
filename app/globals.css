@@ -444,7 +444,7 @@ footer{background:var(--ink);color:rgba(246,239,228,0.75);padding:56px 0 28px;}
 
 /* Upload de várias fotos no admin */
 .upload-box{
-  padding:12px 14px;border-radius:10px;border:1.5px solid rgba(27,27,22,0.15);
+  position:relative;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(27,27,22,0.15);
   display:flex;flex-direction:column;gap:10px;
 }
 .upload-grid{display:flex;flex-wrap:wrap;gap:8px;}
@@ -455,6 +455,14 @@ footer{background:var(--ink);color:rgba(246,239,228,0.75);padding:56px 0 28px;}
   background:var(--coral);color:#fff;font-size:0.85rem;line-height:22px;padding:0;
 }
 .upload-thumb button:disabled{opacity:0.4;cursor:not-allowed;}
+.upload-input{
+  position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);
+}
+.upload-escolher{
+  display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;
+  font-weight:600;cursor:pointer;text-align:center;
+}
+.upload-input:focus-visible + .upload-escolher{outline:2px solid var(--night);outline-offset:2px;}
 .upload-progress-track{height:8px;border-radius:100px;background:rgba(27,27,22,0.1);overflow:hidden;margin-bottom:6px;}
 .upload-progress-fill{height:100%;background:var(--coral);border-radius:100px;transition:width .2s;}
 
