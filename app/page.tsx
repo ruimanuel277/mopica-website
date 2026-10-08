@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "./lib/supabase";
 import AtividadeThumb from "./AtividadeThumb";
+import MetodosPagamento from "./MetodosPagamento";
 
 type Atividade = {
   id: number;
@@ -37,6 +38,16 @@ type Video = {
   titulo: string;
   video_url: string;
 };
+
+type Campanha = {
+  nome: string;
+  arrecadado: number;
+  meta: number;
+};
+
+function formatarKz(valor: number) {
+  return Math.round(valor).toLocaleString("de-DE") + " Kz";
+}
 
 const CORES = [
   ["#E8A33D", "#B5502F"],
@@ -79,6 +90,7 @@ export default function Home() {
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [testemunhos, setTestemunhos] = useState<Testemunho[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [campanha, setCampanha] = useState<Campanha | null>(null);
 
   useEffect(() => {
     supabase
@@ -118,6 +130,19 @@ export default function Home() {
         if (error) return console.error("Erro ao carregar vídeos:", error);
         setVideos(data as Video[]);
       });
+
+    supabase
+      .from("campanha")
+      .select("nome, arrecadado, meta")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) return console.error("Erro ao carregar campanha:", error);
+        // A barra só aparece quando o admin preencheu nome, valor arrecadado e meta
+        if (data && data.nome?.trim() && data.arrecadado != null && Number(data.meta) > 0) {
+          setCampanha({ nome: data.nome.trim(), arrecadado: Number(data.arrecadado), meta: Number(data.meta) });
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -141,13 +166,6 @@ export default function Home() {
       btn.classList.add("active");
     };
     amountButtons.forEach((btn) => btn.addEventListener("click", handleAmountClick(btn)));
-
-    const toggleButtons = document.querySelectorAll(".toggle");
-    const handleToggleClick = (btn: Element) => () => {
-      toggleButtons.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-    };
-    toggleButtons.forEach((btn) => btn.addEventListener("click", handleToggleClick(btn)));
   }, []);
 
   return (
@@ -242,43 +260,38 @@ export default function Home() {
           <div>
             <div className="eyebrow">Faça a diferença hoje</div>
             <h2>Doe hoje e mude a vida de uma criança amanhã.</h2>
-            <p className="lead">
-              Faltam poucos dias para atingirmos a meta da campanha &quot;Proteger é Preciso 2026&quot;,
-              que financia acolhimento e reintegração familiar. Cada Kwanza — ou cada dólar, euro, real — conta.
-            </p>
+            {campanha ? (
+              <>
+                <p className="lead">
+                  Ajude-nos a atingir a meta da campanha &quot;{campanha.nome}&quot;. Cada Kwanza — ou cada
+                  dólar, euro, real — conta.
+                </p>
+                <div className="progress-wrap">
+                  <div className="progress-labels">
+                    <span><strong>{formatarKz(campanha.arrecadado)}</strong> arrecadados</span>
+                    <span className="goal">meta: {formatarKz(campanha.meta)}</span>
+                  </div>
+                  <div className="progress-track">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.min(100, (campanha.arrecadado / campanha.meta) * 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="lead">
+                A sua doação financia acolhimento e reintegração familiar. Cada Kwanza — ou cada dólar,
+                euro, real — conta.
+              </p>
+            )}
 
-            <div className="progress-wrap">
-              <div className="progress-labels">
-                <span><strong>4.850.000 Kz</strong> arrecadados</span>
-                <span className="goal">meta: 7.600.000 Kz</span>
-              </div>
-              <div className="progress-track"><div className="progress-fill"></div></div>
-            </div>
-
-            <div className="eyebrow" style={{ color: "rgba(246,239,228,0.5)" }}>Métodos de pagamento</div>
-            <div className="method-grid" style={{ marginTop: "10px" }}>
-              <div className="method">Multicaixa Express</div>
-              <div className="method">Referência</div>
-              <div className="method">IBAN / Transferência</div>
-              <div className="method">Pay/Pay</div>
-              <div className="method">Cartão internacional</div>
-              <div className="method">PayPal</div>
-            </div>
-            <p className="method-caption">Deteção automática do método mais adequado conforme a sua localização.</p>
-
-            <div className="bank-details">
-              <div className="eyebrow" style={{ color: "rgba(246,239,228,0.5)" }}>Transferência bancária direta</div>
-              <div className="bank-row"><span>Banco</span><span>Banco BIC</span></div>
-              <div className="bank-row"><span>NIB</span><span>0051 0000 4017 1306 1515</span></div>
-              <div className="bank-row"><span>IBAN</span><span>AO06 0051 0000 4017 1306 1515 7</span></div>
-              <div className="bank-row"><span>SWIFT</span><span>BCCBAOLU</span></div>
-            </div>
+            <MetodosPagamento />
           </div>
 
           <div className="donate-panel">
             <div className="toggle-row">
-              <button className="toggle active">Doação única</button>
-              <button className="toggle">Mensal</button>
+              <span className="toggle active">Doação única</span>
             </div>
             <div className="amount-grid">
               <button className="amount">5.000 Kz</button>

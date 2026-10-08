@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/admin/voluntarios", label: "Voluntários" },
   { href: "/admin/contactos", label: "Contactos" },
   { href: "/admin/doacoes", label: "Doações" },
+  { href: "/admin/campanha", label: "Campanha" },
 ];
 
 export default function AdminNav() {

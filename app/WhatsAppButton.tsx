@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const CONTACTOS = [
   { label: "Informações gerais", numero: "244935518305", visivel: "+244 935 518 305" },
@@ -17,7 +18,36 @@ function IconeWhatsApp({ size = 28 }: { size?: number }) {
 
 export default function WhatsAppButton() {
   const [aberto, setAberto] = useState(false);
+  const [escondido, setEscondido] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // No telemóvel o botão flutuante tapava os botões dos painéis de doação:
+  // esconde-o enquanto algum painel de doação estiver visível no ecrã.
+  useEffect(() => {
+    const telemovel = window.matchMedia("(max-width: 560px)");
+    const visiveis = new Set<Element>();
+    let observer: IntersectionObserver | null = null;
+
+    const ligar = () => {
+      observer?.disconnect();
+      visiveis.clear();
+      setEscondido(false);
+      if (!telemovel.matches) return;
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((e) => (e.isIntersecting ? visiveis.add(e.target) : visiveis.delete(e.target)));
+        setEscondido(visiveis.size > 0);
+      });
+      document.querySelectorAll(".donate-panel").forEach((el) => observer!.observe(el));
+    };
+
+    ligar();
+    telemovel.addEventListener("change", ligar);
+    return () => {
+      telemovel.removeEventListener("change", ligar);
+      observer?.disconnect();
+    };
+  }, [pathname]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -36,7 +66,7 @@ export default function WhatsAppButton() {
   }, [aberto]);
 
   return (
-    <div className="wa-float" ref={ref}>
+    <div className={escondido && !aberto ? "wa-float wa-hidden" : "wa-float"} ref={ref}>
       {aberto && (
         <div className="wa-menu" role="menu">
           <div className="wa-menu-head">Fale connosco no WhatsApp</div>

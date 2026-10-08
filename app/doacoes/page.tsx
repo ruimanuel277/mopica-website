@@ -2,53 +2,44 @@
 
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { MULTICAIXA_EXPRESS } from "../lib/dadosBancarios";
+import CopiarBotao from "../CopiarBotao";
+import DadosBancarios from "../DadosBancarios";
 
 const MOEDAS = ["AOA", "USD", "EUR"];
-const METODOS = ["Referência", "Multicaixa Express", "IBAN / Transferência", "PayPal"];
+const METODOS = ["Multicaixa Express", "IBAN / Transferência"];
 
 const MOEDAS_STRIPE = ["USD", "EUR"] as const;
 const VALORES_SUGERIDOS = [1, 5, 10, 25, 50];
 
 function Instrucoes({ metodo, valor, moeda }: { metodo: string; valor: string; moeda: string }) {
-  switch (metodo) {
-    case "IBAN / Transferência":
-      return (
-        <div className="bank-details" style={{ borderTop: "none", paddingTop: 0, marginTop: 0 }}>
-          <div className="bank-row"><span>Banco</span><span>Banco BIC</span></div>
-          <div className="bank-row"><span>NIB</span><span>0051 0000 4017 1306 1515</span></div>
-          <div className="bank-row"><span>IBAN</span><span>AO06 0051 0000 4017 1306 1515 7</span></div>
-          <div className="bank-row"><span>SWIFT</span><span>BCCBAOLU</span></div>
-          <p style={{ fontSize: "0.85rem", marginTop: "14px", opacity: 0.8 }}>
-            Após a transferência de {valor} {moeda}, envie o comprovativo para{" "}
-            <a href="mailto:ong@mopica.org" style={{ textDecoration: "underline" }}>ong@mopica.org</a> para
-            confirmarmos a doação.
-          </p>
-        </div>
-      );
-    case "Multicaixa Express":
-      return (
-        <p style={{ fontSize: "0.9rem", lineHeight: 1.7 }}>
-          Envie {valor} {moeda} por Multicaixa Express para o número <strong>930 00 00 60</strong>. Depois de
-          concluir o pagamento, envie o comprovativo por email para{" "}
-          <a href="mailto:ong@mopica.org" style={{ textDecoration: "underline" }}>ong@mopica.org</a>.
+  if (metodo === "IBAN / Transferência") {
+    return (
+      <div className="bank-details" style={{ borderTop: "none", paddingTop: 0, marginTop: 0 }}>
+        <DadosBancarios />
+        <p style={{ fontSize: "0.85rem", marginTop: "14px", opacity: 0.8 }}>
+          Após a transferência de {valor} {moeda}, envie o comprovativo para{" "}
+          <a href="mailto:ong@mopica.org" style={{ textDecoration: "underline" }}>ong@mopica.org</a> para
+          confirmarmos a doação.
         </p>
-      );
-    case "PayPal":
-      return (
-        <p style={{ fontSize: "0.9rem", lineHeight: 1.7 }}>
-          Envie {valor} {moeda} através do PayPal para{" "}
-          <strong>ong@mopica.org</strong>. Assim que recebermos o pagamento, confirmaremos a sua doação por email.
-        </p>
-      );
-    default:
-      return (
-        <p style={{ fontSize: "0.9rem", lineHeight: 1.7 }}>
-          A nossa equipa vai contactá-lo(a) com a referência de pagamento para os {valor} {moeda} indicados,
-          através do email ou telefone fornecido. Se precisar de falar connosco antes disso, escreva para{" "}
-          <a href="mailto:ong@mopica.org" style={{ textDecoration: "underline" }}>ong@mopica.org</a>.
-        </p>
-      );
+      </div>
+    );
   }
+
+  return (
+    <div style={{ fontSize: "0.9rem", lineHeight: 1.7 }}>
+      <p>
+        Envie {valor} {moeda} por Multicaixa Express para o número <strong>{MULTICAIXA_EXPRESS}</strong>.
+      </p>
+      <div style={{ margin: "10px 0" }}>
+        <CopiarBotao texto={MULTICAIXA_EXPRESS} label="Copiar número" />
+      </div>
+      <p>
+        Depois de concluir o pagamento, envie o comprovativo por email para{" "}
+        <a href="mailto:ong@mopica.org" style={{ textDecoration: "underline" }}>ong@mopica.org</a>.
+      </p>
+    </div>
+  );
 }
 
 function DoacaoCartao() {
@@ -303,7 +294,7 @@ export default function Doacoes() {
           style={{ flex: 1 }}
           onClick={() => setAba("manual")}
         >
-          Angola (Multicaixa e outros)
+          Angola (Multicaixa e IBAN)
         </button>
       </div>
 
