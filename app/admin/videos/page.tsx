@@ -116,6 +116,7 @@ export default function AdminVideos() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!confirm("Apagar este vídeo? Esta ação não pode ser desfeita.")) return;
     await supabase.from("Videos").delete().eq("id", id);
     if (edicao?.id === id) setEdicao(null);
     carregar();

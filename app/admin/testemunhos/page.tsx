@@ -61,6 +61,7 @@ export default function AdminTestemunhos() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!confirm("Apagar este testemunho? Esta ação não pode ser desfeita.")) return;
     await supabase.from("Testemunhas").delete().eq("id", id);
     if (editandoId === id) cancelarEdicao();
     carregar();

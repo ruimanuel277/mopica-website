@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { uploadImagem } from "../lib/uploadImagem";
 
-// Quantas fotos são reduzidas/enviadas ao mesmo tempo
-const ENVIOS_EM_PARALELO = 3;
+type Progresso = { feitas: number; total: number; atual: string };
 
 export default function ImagensUpload({
   pasta,
@@ -19,43 +18,45 @@ export default function ImagensUpload({
   label?: string;
   onEnviando?: (enviando: boolean) => void;
 }) {
-  const [progresso, setProgresso] = useState<{ feitas: number; total: number } | null>(null);
-  const [erro, setErro] = useState("");
+  const [progresso, setProgresso] = useState<Progresso | null>(null);
+  const [erros, setErros] = useState<string[]>([]);
+  const [aviso, setAviso] = useState("");
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const ficheiros = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (ficheiros.length === 0) return;
+    setErros([]);
+    setAviso("");
+    if (ficheiros.length === 0) {
+      setAviso("Nenhuma foto foi recebida do telemóvel. Tente escolher de novo, a partir da Galeria ou de Ficheiros.");
+      return;
+    }
 
-    setErro("");
-    setProgresso({ feitas: 0, total: ficheiros.length });
+    setProgresso({ feitas: 0, total: ficheiros.length, atual: ficheiros[0].name });
     onEnviando?.(true);
 
-    // Mantém a ordem escolhida; posições das fotos que falharem ficam null
-    const urls: (string | null)[] = new Array(ficheiros.length).fill(null);
+    // Uma foto de cada vez: no telemóvel, descodificar várias fotos grandes em
+    // simultâneo pode esgotar a memória e recarregar a página.
+    const urls: string[] = [];
     const falhas: string[] = [];
-    let proximo = 0;
-    let feitas = 0;
-
-    const trabalhador = async () => {
-      while (proximo < ficheiros.length) {
-        const i = proximo++;
-        try {
-          urls[i] = await uploadImagem(ficheiros[i], pasta, true);
-        } catch (err) {
-          falhas.push(`${ficheiros[i].name} (${(err as Error).message})`);
-        }
-        feitas++;
-        setProgresso({ feitas, total: ficheiros.length });
+    for (let i = 0; i < ficheiros.length; i++) {
+      setProgresso({ feitas: i, total: ficheiros.length, atual: ficheiros[i].name });
+      try {
+        urls.push(await uploadImagem(ficheiros[i], pasta, true));
+        // mostra logo cada foto enviada, para não se perder nada se algo falhar a meio
+        onChange([...valores, ...urls]);
+      } catch (err) {
+        falhas.push(`"${ficheiros[i].name}": ${(err as Error).message}`);
       }
-    };
-    await Promise.all(Array.from({ length: Math.min(ENVIOS_EM_PARALELO, ficheiros.length) }, trabalhador));
+    }
 
-    onChange([...valores, ...urls.filter((u): u is string => !!u)]);
     setProgresso(null);
     onEnviando?.(false);
-    if (falhas.length > 0) {
-      setErro(`Não foi possível enviar ${falhas.length} foto(s): ${falhas.join("; ")}`);
+    setErros(falhas);
+    if (urls.length > 0) {
+      setAviso(
+        `${urls.length} de ${ficheiros.length} foto(s) enviada(s). Carregue em "Guardar" para as gravar na atividade.`
+      );
     }
   };
 
@@ -79,8 +80,8 @@ export default function ImagensUpload({
               <button
                 type="button"
                 onClick={() => remover(url)}
-                aria-label={`Apagar foto ${i + 1}`}
-                title="Apagar foto"
+                aria-label={`Remover foto ${i + 1}`}
+                title="Remover foto"
                 disabled={!!progresso}
               >
                 ×
@@ -89,21 +90,31 @@ export default function ImagensUpload({
           ))}
         </div>
       )}
-      <input type="file" accept="image/*" multiple onChange={handleFiles} disabled={!!progresso} />
+      <input type="file" accept="image/*,.heic,.heif" multiple onChange={handleFiles} disabled={!!progresso} />
       {progresso && (
-        <div>
+        <div role="status" aria-live="polite">
           <div className="upload-progress-track">
-            <div className="upload-progress-fill" style={{ width: `${percentagem}%` }} />
+            <div className="upload-progress-fill" style={{ width: `${Math.max(percentagem, 4)}%` }} />
           </div>
-          <span style={{ fontSize: "0.8rem", opacity: 0.7 }}>
-            A enviar {progresso.feitas} de {progresso.total} fotos ({percentagem}%)...
+          <span style={{ fontSize: "0.8rem", opacity: 0.75 }}>
+            A enviar foto {progresso.feitas + 1} de {progresso.total} ({percentagem}%) — não feche esta página.
           </span>
         </div>
       )}
-      {erro && <p className="form-error">{erro}</p>}
+      {aviso && !progresso && <p className={erros.length ? "form-error" : "form-success"}>{aviso}</p>}
+      {erros.length > 0 && (
+        <div className="form-error" role="alert">
+          <strong>Não foi possível enviar {erros.length} foto(s):</strong>
+          <ul style={{ paddingLeft: "18px", marginTop: "4px" }}>
+            {erros.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <span style={{ fontSize: "0.75rem", opacity: 0.55 }}>
-        Pode escolher várias fotos de uma vez. São reduzidas automaticamente antes do envio. As fotos
-        apagadas só são removidas definitivamente ao guardar a atividade.
+        Pode escolher várias fotos de uma vez (incluindo HEIC). São convertidas para JPG e reduzidas antes do
+        envio. As fotos removidas só são apagadas definitivamente ao guardar a atividade.
       </span>
     </div>
   );

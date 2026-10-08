@@ -66,6 +66,7 @@ export default function AdminParceiros() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!confirm("Apagar este parceiro? Esta ação não pode ser desfeita.")) return;
     await supabase.from("Parceiros").delete().eq("id", id);
     if (editandoId === id) cancelarEdicao();
     carregar();
