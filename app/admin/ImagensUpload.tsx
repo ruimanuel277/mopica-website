@@ -1,12 +1,43 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { uploadImagem, type Etapa } from "../lib/uploadImagem";
 
 type Progresso = { feitas: number; total: number; etapa: Etapa };
 
 function descreverFicheiro(f: File) {
   return `${f.type || "tipo desconhecido"}, ${(f.size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// No Android, abrir o seletor de fotos pode fazer o browser descartar a página por falta
+// de memória: ao voltar, a página recarrega e as fotos escolhidas perdem-se sem aviso.
+// Marca-se a abertura do seletor para detetar isso, e guarda-se um registo do que aconteceu.
+const CHAVE_SELETOR = "mopica-seletor-fotos";
+const CHAVE_REGISTO = "mopica-registo-fotos";
+
+function lerSessao(chave: string) {
+  try {
+    return sessionStorage.getItem(chave);
+  } catch {
+    return null;
+  }
+}
+
+function gravarSessao(chave: string, valor: string | null) {
+  try {
+    if (valor === null) sessionStorage.removeItem(chave);
+    else sessionStorage.setItem(chave, valor);
+  } catch {
+    // sem sessionStorage (modo privado): a deteção simplesmente não funciona
+  }
+}
+
+function lerRegisto(): string[] {
+  try {
+    return JSON.parse(lerSessao(CHAVE_REGISTO) ?? "[]");
+  } catch {
+    return [];
+  }
 }
 
 export default function ImagensUpload({
@@ -28,7 +59,42 @@ export default function ImagensUpload({
   const cancelado = useRef(false);
   // permite cancelar de imediato, mesmo que a foto atual esteja pendurada
   const pararEspera = useRef<(() => void) | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
+  const [registo, setRegisto] = useState<string[]>([]);
+
+  const registar = (texto: string) => {
+    const hora = new Date().toLocaleTimeString("pt-PT");
+    const novo = [...lerRegisto(), `${hora} ${texto}`].slice(-30);
+    gravarSessao(CHAVE_REGISTO, JSON.stringify(novo));
+    setRegisto(novo);
+  };
+
+  useEffect(() => {
+    const aberto = Number(lerSessao(CHAVE_SELETOR));
+    gravarSessao(CHAVE_SELETOR, null);
+    setRegisto(lerRegisto());
+    if (aberto && Date.now() - aberto < 15 * 60_000) {
+      registar("a página recarregou enquanto o seletor de fotos estava aberto");
+      setAviso(
+        "O telemóvel recarregou esta página enquanto escolhia as fotos (costuma ser falta de memória), " +
+          "por isso as fotos não chegaram. Feche as outras aplicações e tente de novo, com poucas fotos de cada vez (ex.: 3)."
+      );
+    }
+    // o utilizador fechou o seletor sem escolher nada
+    const input = inputRef.current;
+    const aoCancelar = () => {
+      gravarSessao(CHAVE_SELETOR, null);
+      registar("seletor fechado sem escolher fotos");
+    };
+    input?.addEventListener("cancel", aoCancelar);
+    return () => input?.removeEventListener("cancel", aoCancelar);
+  }, []);
+
+  const abrirSeletor = () => {
+    gravarSessao(CHAVE_SELETOR, String(Date.now()));
+    registar("seletor de fotos aberto");
+  };
 
   const cancelar = () => {
     cancelado.current = true;
@@ -36,10 +102,15 @@ export default function ImagensUpload({
   };
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    gravarSessao(CHAVE_SELETOR, null);
     const ficheiros = Array.from(e.target.files ?? []);
     e.target.value = "";
     setErros([]);
     setAviso("");
+    registar(
+      `${ficheiros.length} ficheiro(s) recebido(s)` +
+        (ficheiros.length ? `: ${ficheiros.map(descreverFicheiro).join("; ")}` : "")
+    );
     if (ficheiros.length === 0) {
       setAviso("Nenhuma foto foi recebida do telemóvel. Tente escolher de novo, a partir da Galeria ou de Ficheiros.");
       return;
@@ -58,6 +129,7 @@ export default function ImagensUpload({
         const f = ficheiros[i];
         setProgresso({ feitas: i, total: ficheiros.length, etapa: "a preparar" });
         try {
+          if (f.size === 0) throw new Error("o telemóvel entregou o ficheiro vazio — escolha a foto a partir de Ficheiros");
           const url = await Promise.race([
             uploadImagem(f, pasta, true, (etapa) => {
               if (!cancelado.current) setProgresso({ feitas: i, total: ficheiros.length, etapa });
@@ -67,12 +139,14 @@ export default function ImagensUpload({
             }),
           ]);
           if (cancelado.current) break;
+          registar(`foto ${i + 1} enviada`);
           urls.push(url);
           // mostra logo cada foto enviada, para não se perder nada se algo falhar a meio
           onChange([...valores, ...urls]);
         } catch (err) {
           if (cancelado.current) break;
           console.error("Falha ao enviar foto", f.name, err);
+          registar(`foto ${i + 1} falhou: ${(err as Error).message}`);
           falhas.push(`"${f.name}" (${descreverFicheiro(f)}): ${(err as Error).message}`);
         }
       }
@@ -125,6 +199,7 @@ export default function ImagensUpload({
       {/* o controlo nativo é minúsculo no telemóvel: fica escondido e usa-se um botão grande */}
       <input
         id={inputId}
+        ref={inputRef}
         className="upload-input"
         type="file"
         accept="image/*"
@@ -133,7 +208,7 @@ export default function ImagensUpload({
         disabled={!!progresso}
       />
       {!progresso && (
-        <label htmlFor={inputId} className="btn-ghost upload-escolher">
+        <label htmlFor={inputId} className="btn-ghost upload-escolher" onClick={abrirSeletor}>
           📷 {valores.length > 0 ? "Adicionar mais fotos" : "Escolher fotos"}
         </label>
       )}
@@ -171,6 +246,16 @@ export default function ImagensUpload({
         Pode escolher várias fotos de uma vez (incluindo HEIC). São convertidas para JPG e reduzidas antes do
         envio. As fotos removidas só são apagadas definitivamente ao guardar a atividade.
       </span>
+      {registo.length > 0 && (
+        <details style={{ fontSize: "0.72rem", opacity: 0.6 }}>
+          <summary>Registo do envio (para diagnóstico)</summary>
+          <ol style={{ paddingLeft: "18px", marginTop: "4px", wordBreak: "break-word" }}>
+            {registo.map((linha, i) => (
+              <li key={i}>{linha}</li>
+            ))}
+          </ol>
+        </details>
+      )}
     </div>
   );
 }

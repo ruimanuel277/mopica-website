@@ -31,6 +31,11 @@ type AtividadeRow = Omit<Atividade, "descricao"> & { "descriçao": string };
 
 const FORM_VAZIO = { titulo: "", descricao: "", categoria: "", local: "", data: "", imagens: [] as string[] };
 
+// Se o telemóvel recarregar a página (ex.: ao abrir o seletor de fotos), o que já foi
+// escrito no formulário não se perde.
+const CHAVE_RASCUNHO = "mopica-rascunho-atividade";
+type Rascunho = { form: typeof FORM_VAZIO; editandoId: number | null; originais: string[] };
+
 export default function AdminPanel() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [form, setForm] = useState(FORM_VAZIO);
@@ -60,6 +65,34 @@ export default function AdminPanel() {
     carregarAtividades();
   }, []);
 
+  const [rascunhoLido, setRascunhoLido] = useState(false);
+  useEffect(() => {
+    try {
+      const r = JSON.parse(sessionStorage.getItem(CHAVE_RASCUNHO) ?? "null") as Rascunho | null;
+      if (r?.form) {
+        setForm({ ...FORM_VAZIO, ...r.form });
+        setEditandoId(r.editandoId);
+        setOriginais(r.originais ?? []);
+        setConhecidas(Array.from(new Set([...(r.originais ?? []), ...(r.form.imagens ?? [])])));
+        setMensagem({ tipo: "ok", texto: "Recuperámos o que tinha preenchido antes de a página recarregar." });
+      }
+    } catch {
+      // rascunho inválido ou sem sessionStorage: começa vazio
+    }
+    setRascunhoLido(true);
+  }, []);
+
+  useEffect(() => {
+    if (!rascunhoLido) return;
+    try {
+      const vazio = editandoId === null && JSON.stringify(form) === JSON.stringify(FORM_VAZIO);
+      if (vazio) sessionStorage.removeItem(CHAVE_RASCUNHO);
+      else sessionStorage.setItem(CHAVE_RASCUNHO, JSON.stringify({ form, editandoId, originais } satisfies Rascunho));
+    } catch {
+      // sem sessionStorage: não há rascunho
+    }
+  }, [rascunhoLido, form, editandoId, originais]);
+
   // Avisa antes de sair da página com fotos enviadas mas por guardar
   useEffect(() => {
     if (fotosPorGuardar.length === 0 && !enviandoFotos) return;
@@ -71,6 +104,17 @@ export default function AdminPanel() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (enviandoFotos) return;
+    // evita gravar sem fotos sem dar por isso (ex.: as fotos escolhidas não chegaram)
+    const tinhaFotos = originais.length > 0;
+    if (
+      form.imagens.length === 0 &&
+      !confirm(
+        tinhaFotos
+          ? "Removeu todas as fotos desta atividade. Guardar sem fotos?"
+          : 'Esta atividade não tem fotos (devem aparecer em miniatura acima do botão "Escolher fotos"). Guardar mesmo assim, sem fotos?'
+      )
+    )
+      return;
     const dadosParaEnviar = {
       titulo: form.titulo,
       "descriçao": form.descricao,
