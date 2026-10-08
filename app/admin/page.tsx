@@ -245,7 +245,13 @@ export default function AdminPanel() {
                 setForm((atual) => ({ ...atual, imagens: urls }));
                 setConhecidas((atual) => Array.from(new Set([...atual, ...urls])));
               }}
+              onAdicionar={(novas) => {
+                // acrescenta às fotos que já estão no formulário: nunca substitui as anteriores
+                setForm((atual) => ({ ...atual, imagens: Array.from(new Set([...atual.imagens, ...novas])) }));
+                setConhecidas((atual) => Array.from(new Set([...atual, ...novas])));
+              }}
               onEnviando={setEnviandoFotos}
+              nomeBotaoGuardar={editandoId ? "Guardar alterações" : "Adicionar atividade"}
               label="Fotos (opcional)"
             />
             {mensagem && (

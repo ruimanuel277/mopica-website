@@ -44,18 +44,28 @@ export default function ImagensUpload({
   pasta,
   valores,
   onChange,
+  onAdicionar,
   label,
   onEnviando,
+  nomeBotaoGuardar = "Guardar",
 }: {
   pasta: string;
   valores: string[];
   onChange: (urls: string[]) => void;
+  // acrescenta fotos novas à lista atual (sem depender de `valores`, que pode estar desatualizado)
+  onAdicionar?: (urls: string[]) => void;
   label?: string;
   onEnviando?: (enviando: boolean) => void;
+  nomeBotaoGuardar?: string;
 }) {
+  // lista sempre atualizada, para cada foto nova ser acrescentada e nunca substituir as anteriores
+  const valoresRef = useRef(valores);
+  valoresRef.current = valores;
   const [progresso, setProgresso] = useState<Progresso | null>(null);
   const [erros, setErros] = useState<string[]>([]);
   const [aviso, setAviso] = useState("");
+  // "carregue em Guardar": só faz sentido enquanto houver fotos no formulário por gravar
+  const [avisoGuardar, setAvisoGuardar] = useState("");
   const cancelado = useRef(false);
   // permite cancelar de imediato, mesmo que a foto atual esteja pendurada
   const pararEspera = useRef<(() => void) | null>(null);
@@ -107,6 +117,7 @@ export default function ImagensUpload({
     e.target.value = "";
     setErros([]);
     setAviso("");
+    setAvisoGuardar("");
     registar(
       `${ficheiros.length} ficheiro(s) recebido(s)` +
         (ficheiros.length ? `: ${ficheiros.map(descreverFicheiro).join("; ")}` : "")
@@ -142,7 +153,8 @@ export default function ImagensUpload({
           registar(`foto ${i + 1} enviada`);
           urls.push(url);
           // mostra logo cada foto enviada, para não se perder nada se algo falhar a meio
-          onChange([...valores, ...urls]);
+          if (onAdicionar) onAdicionar([url]);
+          else onChange([...valoresRef.current, url]);
         } catch (err) {
           if (cancelado.current) break;
           console.error("Falha ao enviar foto", f.name, err);
@@ -161,7 +173,7 @@ export default function ImagensUpload({
     if (cancelado.current) {
       setAviso(`Envio cancelado. ${urls.length} foto(s) já tinham sido enviadas.`);
     } else if (urls.length > 0) {
-      setAviso(`${urls.length} de ${ficheiros.length} foto(s) enviada(s). Carregue em "Guardar" para as gravar na atividade.`);
+      setAvisoGuardar(`${urls.length} de ${ficheiros.length} foto(s) enviada(s). Carregue em "${nomeBotaoGuardar}" para as gravar na atividade.`);
     }
   };
 
@@ -232,6 +244,7 @@ export default function ImagensUpload({
         </div>
       )}
       {aviso && !progresso && <p className={erros.length ? "form-error" : "form-success"}>{aviso}</p>}
+      {avisoGuardar && !progresso && valores.length > 0 && <p className="form-success">{avisoGuardar}</p>}
       {erros.length > 0 && (
         <div className="form-error" role="alert">
           <strong>Não foi possível enviar {erros.length} foto(s):</strong>
@@ -243,7 +256,8 @@ export default function ImagensUpload({
         </div>
       )}
       <span style={{ fontSize: "0.75rem", opacity: 0.55 }}>
-        Pode escolher várias fotos de uma vez (incluindo HEIC). São convertidas para JPG e reduzidas antes do
+        Pode escolher várias fotos de uma vez (incluindo HEIC): na galeria do telemóvel, mantenha o dedo
+        na primeira foto e depois toque nas outras. São convertidas para JPG e reduzidas antes do
         envio. As fotos removidas só são apagadas definitivamente ao guardar a atividade.
       </span>
       {registo.length > 0 && (
